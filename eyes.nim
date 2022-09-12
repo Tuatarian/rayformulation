@@ -11,12 +11,14 @@ InitAudioDevice()
 SetMasterVolume 1
 SetTargetFPS 60
 
-var cam : Cam3
+var cam = Cam3(fovX : PI/3, fovY : PI/4, zNear : 0.1, zFar : 1000)
+setDefCam3 cam
 
-let tri = [vec(screenWidth, screenHeight, 2), vec(0, 0, 2), vec(screenWidth, 0, 4)]
+let tri = [vec(screenWidth, screenHeight, 2), vec(1, 1, 2), vec(screenWidth, 0, 4)]
 
 while not WindowShouldClose():
     ClearBackground BLACK 
     BeginDrawing()
+    debugEcho tri.map(x => x.screenNormal)
     drawTri3 tri, WHITE
     EndDrawing()

@@ -2,11 +2,27 @@ import raylib, math, sugar, sequtils, strformat, zero_functional, strutils, leni
 
 type Vec*[N : static int] = array[N, float]
 
-
 type Cam3* = object
     pos* : Vec[3]
-    lookDir* : Vec[3]
     fovX*, fovY* : float # radians
+    pitch*, yaw*, roll* : float # also radians
+    senSize* : Vec[2]
+    focLen* : float
+    zNear*, zFar* : float
+
+type Mat[N,M : static int] = array[N * M, float] # N rows by M columns
+
+func `[]`[N, M](m : Mat[N, M], i, j : SomeInteger) : float = m[i * N + j]
+
+func `*`[N, M, I](m : Mat[N, M], m1 : Mat[M, I]) : Mat[N, I] =
+    for i in 0..<N:
+        for j in 0..<M:
+            result[i, j] += m[i, j] * m[j, i]
+
+func `*`[N, M](m : Mat[N, M], v : Vec[M]) : Vec[M] =
+    for i in 0..<N:
+        for j in 0..<M:
+          result[i] += m[i, j] * v[j]
 
 func makevec2(v : Vec[2]) : Vector2 =
     Vector2(x : v[0], y : v[1])
@@ -17,17 +33,25 @@ template vec*(args : varargs[SomeNumber]) : untyped =
         res[i] = float args[i]
     res
 
+const
+    screenRect = vec(1920, 1080)
+    aspectRatio = 16/9
+
 var
     defCam3 = Cam3()
-    screenRect = vec(1920, 1080)
 
 func x*(v : Vec) : float = v[0]
 func y*(v : Vec) : float = v[1]
 func z*(v : Vec) : float = v[2]
+func w*(v : Vec) : float = v[3]
+
+func `+`*[N](v, v1 : Vec[N]) : Vec[N] =
+    for i in 0..<v.len:
+        result[i] = v[i] + v1[i]
 
 func `-`*[N](v, v2 : Vec[N]) : Vec[N] =
     for i in 0..<v.len:
-      result[i] = v[i] - v2[i]
+        result[i] = v[i] - v2[i]
 
 func `*`*[N](v, v1 : Vec[N]) : Vec[N] =
     for i in 0..<v.len:
@@ -37,7 +61,7 @@ func `*`*[N](s : SomeNumber, v : Vec[N]) : Vec[N] =
     for i in 0..<v.len:
         result[i] = s * v[i]
 
-func `/`*(v : Vec, n : SomeNumber) : Vec =
+func `/`*[N](v : Vec[N], n : SomeNumber) : Vec[N] =
     for i in 0..<v.len:
         result[i] = v[i]/n
 
@@ -50,13 +74,24 @@ func xy*(v : Vec) : Vec[2] = vec(v.x, v.y)
 proc setDefCam3*(c : Cam3) =
     defCam3 = c
 
-func normal*(v : Vec[3], c : Cam3 = defCam3) : Vec[2] =
-    let d = abs(c.pos.z - v.z)
-    let rect = d*vec(tan(c.fovX/2), tan(c.fovY/2))
-    return v.xy/rect
+func screenNormal*(v : Vec[3], c : Cam3 = defCam3) : Vec[2] =
+    let d = v.z - c.pos.z
+    let m1 : Mat[4, 4] = [1/(tan(c.fovX/2)*aspectRatio), 0, 0, 0,
+                          0, 1/tan(c.fovX/2), 0, 0,
+                          0, 0, (c.zFar + c.zNear)/(c.zNear - c.zFar), -1,
+                          0, 0, (c.zFar + c.zNear)/(c.zNear - c.zFar), 1]
+    let v1 = m1 * vec(v[0], v[1], v[2], 1.float)
+    let v2 = (Mat[4, 4] [1/v1.z, 0, 0, 0,
+                         0, 1/v1.z,0, 0,
+                         0, 0, 1, 0,
+                         0, 0, 0, 1]) * vec(v1.x, v1.y, v1.z, 1.float)
+    let ndc = vec(v2.x, v2.y)/v2.w
+    return vec(((ndc.x + 1)*screenRect.x/2), ((1 - ndc.y)*screenRect.y)/2)
+
 
 proc drawTri3*(verts : varargs[Vec[3]], col : Color) =
     var norms : array[3, Vector2]
     for i in 0..<verts.len:
-        norms[i] = makevec2 verts[i].normal*screenRect
+        norms[i] = makevec2 verts[i].screenNormal*screenRect
+    debugEcho norms
     DrawTriangle(norms[0], norms[1], norms[2], col)
