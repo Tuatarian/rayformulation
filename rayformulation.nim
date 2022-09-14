@@ -76,18 +76,15 @@ proc setDefCam3*(c : Cam3) =
 
 func screenNormal*(v : Vec[3], c : Cam3 = defCam3) : Vec[2] =
     let d = v.z - c.pos.z
-    let m1 : Mat[4, 4] = [1/(tan(c.fovX/2)*aspectRatio), 0, 0, 0,
-                          0, 1/tan(c.fovX/2), 0, 0,
-                          0, 0, (c.zFar + c.zNear)/(c.zNear - c.zFar), -1,
-                          0, 0, (c.zFar + c.zNear)/(c.zNear - c.zFar), 1]
-    let v1 = m1 * vec(v[0], v[1], v[2], 1.float)
-    let v2 = (Mat[4, 4] [1/v1.z, 0, 0, 0,
-                         0, 1/v1.z,0, 0,
-                         0, 0, 1, 0,
-                         0, 0, 0, 1]) * vec(v1.x, v1.y, v1.z, 1.float)
-    let ndc = vec(v2.x, v2.y)/v2.w
-    return vec(((ndc.x + 1)*screenRect.x/2), ((1 - ndc.y)*screenRect.y)/2)
-
+    let m1 : Mat[4, 4] = [
+      1/(aspectRatio * tan(c.fovX/2)), 0, 0, 0,
+      0, 1/tan(c.fovX/2), 0, 0,
+      0, 0, c.zFar/(c.zFar - c.zNear), -1,
+      0, 0, c.zNear * c.zFar/(c.zFar - c.zNear), 0
+    ]
+    let v1 = m1 * vec(v.x, v.y, v.z, 1.float)
+    let ndc = vec(v1.x, v1.y, v1.z)/v1.w
+    return ndc.xy/ndc.z * screenRect
 
 proc drawTri3*(verts : varargs[Vec[3]], col : Color) =
     var norms : array[3, Vector2]

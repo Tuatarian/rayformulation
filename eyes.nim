@@ -11,10 +11,10 @@ InitAudioDevice()
 SetMasterVolume 1
 SetTargetFPS 60
 
-var cam = Cam3(fovX : PI/3, fovY : PI/4, zNear : 0.1, zFar : 1000)
+var cam = Cam3(fovX : PI/3, fovY : PI/4, zNear : 0.001, zFar : 10)
 setDefCam3 cam
 
-let tri = [vec(screenWidth, screenHeight, 2), vec(1, 1, 2), vec(screenWidth, 0, 4)]
+let tri = [vec(12, 3, 29), vec(1, 1, 223), vec(4, 0, 423)]
 
 while not WindowShouldClose():
     ClearBackground BLACK 
